@@ -81,6 +81,10 @@ export default function Home() {
               className="bg-white p-8 rounded-[3rem] max-w-md w-full shadow-2xl overflow-hidden relative"
             >
               <h2 className="text-2xl font-black mb-4 uppercase italic text-primary">Complete Your Order</h2>
+              <div className="flex items-center space-x-3 mb-4">
+   <div className="p-3 bg-primary/20 rounded-2xl text-primary text-2xl">🛍️</div>
+   <h2 className="text-2xl font-black uppercase italic text-primary">Complete Your Order</h2>
+</div>
               <p className="text-slate-500 mb-6 font-medium">Buying: <span className="text-slate-900">{selectedProduct.name}</span></p>
               
               <div className="space-y-4">

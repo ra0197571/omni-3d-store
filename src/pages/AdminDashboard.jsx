@@ -37,9 +37,17 @@ export default function AdminDashboard() {
               <label className="text-xs font-bold text-slate-400">PRIMARY THEME COLOR</label>
               <input type="color" value={settings.primaryColor} className="w-full h-16 cursor-pointer" onChange={(e)=>updateSettings('primaryColor', e.target.value)} />
             </div>
+            <div>
+  <label className="text-xs font-bold text-slate-400">SECONDARY COLOR (Navbar/Footer)</label>
+  <input 
+    type="color" 
+    value={settings.secondaryColor} 
+    className="w-full h-16 cursor-pointer rounded-2xl mt-2" 
+    onChange={(e)=>updateSettings('secondaryColor', e.target.value)} 
+  />
+</div>
           </div>
         </section>
-        // AdminDashboard.jsx mein "Branding Controls" wale div ke niche ye section add karein:
 
 <section className="bg-white p-8 rounded-[2.5rem] shadow-xl border mt-8">
   <h2 className="text-2xl font-bold mb-6 italic border-b pb-2 text-green-600">Payment & WhatsApp</h2>
@@ -71,25 +79,7 @@ export default function AdminDashboard() {
              <button className="w-full bg-primary p-4 rounded-2xl font-bold uppercase tracking-widest">Publish Product</button>
           </form>
         </section>
-<section className="bg-white p-8 rounded-[2.5rem] shadow-xl border mt-10">
-  <h2 className="text-2xl font-bold mb-6 italic border-b pb-2 text-orange-500">Payment & Contact</h2>
-  <div className="space-y-4">
-    <div>
-      <label className="text-xs font-bold text-slate-400">WHATSAPP NUMBER (923...)</label>
-      <input type="text" value={settings.whatsapp} className="w-full p-4 border rounded-2xl" placeholder="923001234567" onChange={(e)=>updateSettings('whatsapp', e.target.value)} />
-    </div>
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <label className="text-xs font-bold text-slate-400">JAZZCASH NO</label>
-        <input type="text" value={settings.jazzCashNo} className="w-full p-4 border rounded-2xl" onChange={(e)=>updateSettings('jazzCashNo', e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs font-bold text-slate-400">EASYPAISA NO</label>
-        <input type="text" value={settings.easyPaisaNo} className="w-full p-4 border rounded-2xl" onChange={(e)=>updateSettings('easyPaisaNo', e.target.value)} />
-      </div>
-    </div>
-  </div>
-</section>
+
       </div>
     </div>
   );

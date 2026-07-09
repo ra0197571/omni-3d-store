@@ -1,23 +1,26 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, MeshDistortMaterial, Sphere } from '@react-three/drei';
+import { OrbitControls, Float, MeshDistortMaterial, useGLTF, Stage } from '@react-three/drei';
+import { Suspense } from 'react';
+
+// Ye function ek generic 3D Bag load karega
+function ShoppingBag() {
+  // Maine ek public 3D Bag ka link dala hai, aap baad mein apni file bhi laga sakte hain
+  const { scene } = useGLTF('https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/shopping-bag/model.gltf');
+  return <primitive object={scene} scale={2} />;
+}
 
 export default function Hero3D({ color }) {
   return (
     <div className="h-[500px] w-full cursor-grab active:cursor-grabbing">
-      <Canvas>
-        <OrbitControls enableZoom={false} />
-        <ambientLight intensity={1.5} />
-        <pointLight position={[10, 10, 10]} />
-        <Sphere args={[1, 100, 200]} scale={2.4}>
-          <MeshDistortMaterial
-            color={color || "#3b82f6"} // Ab ye wahi color lega jo admin mein set hoga
-            attach="material"
-            distort={0.4}
-            speed={2}
-            roughness={0.2}
-            metalness={0.8}
-          />
-        </Sphere>
+      <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
+        <Suspense fallback={null}>
+          <Stage environment="city" intensity={0.5}>
+            <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
+               <ShoppingBag />
+            </Float>
+          </Stage>
+        </Suspense>
+        <OrbitControls enableZoom={false} autoRotate />
       </Canvas>
     </div>
   );
