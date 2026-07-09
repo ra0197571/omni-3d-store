@@ -1,115 +1,125 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { db } from './firebase';
-import { doc, onSnapshot, setDoc, collection, addDoc, deleteDoc } from "firebase/firestore"; 
+import { collection, onSnapshot, addDoc, deleteDoc, doc, setDoc } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- CUSTOMER STORE PAGE ---
-const Storefront = ({ storeName, products, primaryColor }) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-gray-50">
-    <nav className="p-6 bg-primary text-white shadow-xl flex justify-between items-center transition-all">
-      <h1 className="text-3xl font-black italic tracking-tighter uppercase">{storeName}</h1>
-      <Link title='Admin Panel' to="/admin" className="bg-white/20 px-4 py-2 rounded-full backdrop-blur-md hover:bg-white/40 transition">⚙️</Link>
+// --- 🛒 USER STOREFRONT ---
+const Store = ({ storeName, products }) => (
+  <div className="min-h-screen bg-gray-50">
+    <nav className="p-6 bg-primary text-white shadow-xl flex justify-between items-center sticky top-0 z-50 transition-all">
+      <h1 className="text-3xl font-black italic uppercase tracking-tighter">{storeName || "Omni Store"}</h1>
+      <Link to="/admin" className="bg-white/20 px-5 py-2 rounded-full hover:bg-white/40 backdrop-blur-md transition">Admin</Link>
     </nav>
     
-    <div className="max-w-6xl mx-auto p-10">
-      <h2 className="text-2xl font-bold mb-8 text-gray-800">Featured Products</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {products.map(product => (
-          <motion.div 
-            layout
-            whileHover={{ y: -10 }}
-            key={product.id} 
-            className="bg-white p-5 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all border border-gray-100"
-          >
-            <div className="w-full h-48 bg-gray-100 rounded-[1.5rem] mb-4 flex items-center justify-center text-gray-400 overflow-hidden">
-               {/* Agle step mein hum yahan real image dalenge */}
-               <span className="text-xs uppercase font-bold tracking-widest">No Image</span>
+    <div className="max-w-7xl mx-auto p-10">
+      <h2 className="text-3xl font-bold mb-10 text-gray-800">Latest Collection</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10">
+        {products.map(p => (
+          <motion.div layout whileHover={{ y: -10 }} key={p.id} className="bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-2xl transition-all border border-gray-100 group">
+            <div className="w-full h-60 bg-gray-100 rounded-[2rem] mb-5 overflow-hidden">
+              <img src={p.image || "https://via.placeholder.com/300"} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
             </div>
-            <h4 className="font-bold text-lg text-gray-800">{product.name}</h4>
-            <div className="flex justify-between items-center mt-3">
-               <p className="text-primary font-black text-xl">Rs. {product.price}</p>
-               <button className="bg-primary text-white p-3 rounded-2xl shadow-lg shadow-primary/30">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>
-               </button>
+            <h4 className="font-bold text-xl text-gray-800 px-2">{p.name}</h4>
+            <div className="flex justify-between items-center mt-4 px-2">
+              <span className="text-primary font-black text-2xl">Rs. {p.price}</span>
+              <button className="bg-primary text-white p-4 rounded-2xl shadow-lg shadow-primary/30 active:scale-90 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>
+              </button>
             </div>
           </motion.div>
         ))}
       </div>
+      {products.length === 0 && <p className="text-center text-gray-400 mt-20 text-xl font-medium italic">Store is empty. Please add products from Admin Panel.</p>}
     </div>
-  </motion.div>
+  </div>
 );
 
-// --- MAIN APP COMPONENT ---
-function App() {
-  const [storeName, setStoreName] = useState("");
+// --- ⚙️ ADMIN DASHBOARD ---
+const Admin = ({ storeName, setStoreName, primaryColor, setPrimaryColor, products }) => {
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [imgUrl, setImgUrl] = useState("");
+
+  const saveSettings = async (n, c) => await setDoc(doc(db, "settings", "storeConfig"), { storeName: n, primaryColor: c });
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if (!name || !price || !imgUrl) return alert("Pehle saari details bharein!");
+    await addDoc(collection(db, "products"), { name, price, image: imgUrl, createdAt: new Date() });
+    setName(""); setPrice(""); setImgUrl("");
+  };
+
+  return (
+    <div className="p-10 max-w-6xl mx-auto min-h-screen">
+      <Link to="/" className="text-primary font-bold hover:underline">← Go to Website</Link>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-10">
+        {/* Settings */}
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">Store Settings</h2>
+          <div className="space-y-4">
+            <label className="text-xs font-bold text-gray-400 uppercase">Brand Name</label>
+            <input type="text" value={storeName} className="w-full p-4 border rounded-2xl outline-none focus:border-primary" onChange={(e) => {setStoreName(e.target.value); saveSettings(e.target.value, primaryColor)}} />
+            <label className="text-xs font-bold text-gray-400 uppercase">Theme Color</label>
+            <input type="color" value={primaryColor} className="w-full h-16 cursor-pointer rounded-2xl" onChange={(e) => {setPrimaryColor(e.target.value); saveSettings(storeName, e.target.value)}} />
+          </div>
+        </div>
+
+        {/* Add Product */}
+        <div className="bg-gray-900 text-white p-8 rounded-[2.5rem] shadow-xl">
+          <h2 className="text-2xl font-bold mb-6 text-primary">Add New Product</h2>
+          <form onSubmit={handleAddProduct} className="space-y-4">
+            <input type="text" placeholder="Product Name" value={name} className="w-full p-4 rounded-2xl bg-gray-800 border-none outline-none focus:ring-2 ring-primary" onChange={(e)=>setName(e.target.value)} />
+            <input type="number" placeholder="Price (PKR)" value={price} className="w-full p-4 rounded-2xl bg-gray-800 border-none outline-none focus:ring-2 ring-primary" onChange={(e)=>setPrice(e.target.value)} />
+            <input type="text" placeholder="Image URL (Paste link here)" value={imgUrl} className="w-full p-4 rounded-2xl bg-gray-800 border-none outline-none focus:ring-2 ring-primary" onChange={(e)=>setImgUrl(e.target.value)} />
+            <button className="w-full bg-primary p-4 rounded-2xl font-bold uppercase tracking-widest text-lg shadow-lg shadow-primary/20">Add to Store</button>
+          </form>
+        </div>
+      </div>
+
+      <div className="mt-16">
+        <h3 className="text-2xl font-bold mb-6">Inventory Management</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map(p => (
+            <div key={p.id} className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-200">
+              <div className="flex items-center space-x-4">
+                <img src={p.image} className="w-12 h-12 rounded-lg object-cover" />
+                <span className="font-bold">{p.name}</span>
+              </div>
+              <button onClick={() => deleteDoc(doc(db, "products", p.id))} className="text-red-500 hover:bg-red-50 p-2 rounded-lg">Delete</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 🚀 MAIN APP ---
+export default function App() {
+  const [storeName, setStoreName] = useState("Store");
   const [primaryColor, setPrimaryColor] = useState("#3b82f6");
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    onSnapshot(doc(db, "settings", "storeConfig"), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+    onSnapshot(doc(db, "settings", "storeConfig"), (s) => {
+      if (s.exists()) {
+        const data = s.data();
         setStoreName(data.storeName);
         setPrimaryColor(data.primaryColor);
         document.documentElement.style.setProperty('--primary-color', data.primaryColor);
       }
     });
-
-    onSnapshot(collection(db, "products"), (snapshot) => {
-      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    onSnapshot(collection(db, "products"), (s) => setProducts(s.docs.map(d => ({id:d.id, ...d.data()}))));
   }, []);
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Storefront storeName={storeName} products={products} primaryColor={primaryColor} />} />
-        <Route path="/admin" element={<AdminPanel storeName={storeName} products={products} setStoreName={setStoreName} setPrimaryColor={setPrimaryColor} primaryColor={primaryColor} />} />
+        <Route path="/" element={<Store storeName={storeName} products={products} />} />
+        <Route path="/admin" element={<Admin storeName={storeName} setStoreName={setStoreName} primaryColor={primaryColor} setPrimaryColor={setPrimaryColor} products={products} />} />
       </Routes>
     </Router>
   );
 }
-
-// --- ADMIN PANEL COMPONENT (Hidden logic simplified for view) ---
-const AdminPanel = ({ storeName, products, setStoreName, setPrimaryColor, primaryColor }) => {
-  const [pName, setPName] = useState("");
-  const [pPrice, setPPrice] = useState("");
-
-  const saveConfig = async (n, c) => await setDoc(doc(db, "settings", "storeConfig"), { storeName: n, primaryColor: c });
-  const addP = async () => { 
-    if(!pName || !pPrice) return;
-    await addDoc(collection(db, "products"), { name: pName, price: pPrice });
-    setPName(""); setPPrice("");
-  }
-
-  return (
-    <div className="p-10 bg-white min-h-screen">
-       <Link to="/" className="text-primary font-bold mb-10 block">← Back to Store</Link>
-       <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold">Admin Settings</h2>
-            <input type="text" value={storeName} className="w-full p-4 border rounded-2xl" onChange={(e) => {setStoreName(e.target.value); saveConfig(e.target.value, primaryColor)}} />
-            <input type="color" value={primaryColor} className="w-full h-14" onChange={(e) => {setPrimaryColor(e.target.value); saveConfig(storeName, e.target.value)}} />
-          </div>
-          <div className="space-y-6 bg-gray-50 p-6 rounded-[2rem]">
-            <h2 className="text-2xl font-bold">New Product</h2>
-            <input type="text" placeholder="Name" value={pName} className="w-full p-4 border rounded-2xl" onChange={(e)=>setPName(e.target.value)} />
-            <input type="number" placeholder="Price" value={pPrice} className="w-full p-4 border rounded-2xl" onChange={(e)=>setPPrice(e.target.value)} />
-            <button onClick={addP} className="w-full bg-black text-white p-4 rounded-2xl font-bold">Add Product</button>
-          </div>
-       </div>
-       <div className="mt-10 border-t pt-10">
-          <h3 className="text-xl font-bold mb-4">Current Inventory</h3>
-          {products.map(p => (
-            <div key={p.id} className="flex justify-between items-center p-4 border-b">
-              <span>{p.name}</span>
-              <button onClick={async ()=> await deleteDoc(doc(db, "products", p.id))} className="text-red-500">Delete</button>
-            </div>
-          ))}
-       </div>
-    </div>
-  );
-}
-
-export default App;
