@@ -1,95 +1,127 @@
 import React, { useState, useEffect } from 'react';
-import { db } from './firebase'; // Firebase config import
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"; 
+import { db } from './firebase';
+import { doc, onSnapshot, setDoc, collection, addDoc, deleteDoc } from "firebase/firestore"; 
 
 function App() {
   const [storeName, setStoreName] = useState("Loading...");
   const [primaryColor, setPrimaryColor] = useState("#3b82f6");
+  const [products, setProducts] = useState([]);
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductPrice, setNewProductPrice] = useState("");
 
-  // 1. Database se settings load karna (Website khulte hi)
   useEffect(() => {
-    const docRef = doc(db, "settings", "storeConfig");
-    
-    // Real-time listener: Agar koi admin panel se change kare, to website khud update ho jaye
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    // 1. Settings Load Karna
+    const configRef = doc(db, "settings", "storeConfig");
+    onSnapshot(configRef, (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        setStoreName(data.storeName);
-        setPrimaryColor(data.primaryColor);
-        document.documentElement.style.setProperty('--primary-color', data.primaryColor);
-      } else {
-        // Agar pehli dafa hai aur data nahi hai
-        setStoreName("MY OMNI STORE");
+        setStoreName(docSnap.data().storeName);
+        setPrimaryColor(docSnap.data().primaryColor);
+        document.documentElement.style.setProperty('--primary-color', docSnap.data().primaryColor);
       }
     });
 
-    return () => unsubscribe();
+    // 2. Products Load Karna (Real-time)
+    const productsRef = collection(db, "products");
+    const unsubProducts = onSnapshot(productsRef, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(items);
+    });
+
+    return () => unsubProducts();
   }, []);
 
-  // 2. Data Firebase mein save karne ka function
-  const saveToFirebase = async (newName, newColor) => {
-    try {
-      await setDoc(doc(db, "settings", "storeConfig"), {
-        storeName: newName,
-        primaryColor: newColor
-      });
-    } catch (e) {
-      console.error("Error saving document: ", e);
-    }
+  // Settings Save Karna
+  const saveConfig = async (name, color) => {
+    await setDoc(doc(db, "settings", "storeConfig"), { storeName: name, primaryColor: color });
   };
 
-  const handleNameChange = (e) => {
-    const name = e.target.value;
-    setStoreName(name);
-    saveToFirebase(name, primaryColor);
+  // Naya Product Add Karna
+  const addProduct = async (e) => {
+    e.preventDefault();
+    if (!newProductName || !newProductPrice) return;
+    await addDoc(collection(db, "products"), {
+      name: newProductName,
+      price: newProductPrice,
+      createdAt: new Date()
+    });
+    setNewProductName("");
+    setNewProductPrice("");
   };
 
-  const handleColorChange = (e) => {
-    const color = e.target.value;
-    setPrimaryColor(color);
-    document.documentElement.style.setProperty('--primary-color', color);
-    saveToFirebase(storeName, color);
+  // Product Delete Karna
+  const deleteProduct = async (id) => {
+    await deleteDoc(doc(db, "products", id));
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-5 bg-gray-50">
-      {/* Website Header */}
-      <div 
-        className="p-10 rounded-3xl shadow-2xl text-white mb-10 w-full max-w-lg text-center transition-all duration-500 bg-primary"
-      >
-        <h1 className="text-4xl font-black uppercase tracking-tighter">{storeName}</h1>
-        <p className="opacity-80 text-sm mt-2 font-medium italic">Ultra Pro Max Live Store</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+      {/* Header */}
+      <header className="bg-primary p-10 text-white text-center shadow-2xl transition-all duration-500">
+        <h1 className="text-5xl font-black uppercase italic">{storeName}</h1>
+      </header>
 
-      {/* Admin Panel Card */}
-      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-200">
-        <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-4 text-center italic text-primary">Admin Control</h3>
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 p-10">
         
-        <div className="space-y-6">
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Update Store Name</label>
-            <input 
-              type="text" 
-              value={storeName}
-              placeholder="Type Brand Name..." 
-              className="border-2 border-gray-100 p-3 rounded-xl w-full focus:border-primary outline-none text-center font-bold"
-              onChange={handleNameChange}
-            />
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Pick Theme Color</label>
-            <input 
-              type="color" 
-              value={primaryColor}
-              onChange={handleColorChange}
-              className="w-full h-14 cursor-pointer rounded-xl border-none shadow-sm"
-            />
-          </div>
+        {/* LEFT: ADMIN PANEL */}
+        <div className="space-y-8">
+          <section className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
+            <h3 className="text-xl font-bold mb-6 text-primary italic border-b pb-2">Branding Settings</h3>
+            <div className="space-y-4">
+              <input 
+                type="text" value={storeName} className="w-full p-3 border-2 rounded-xl outline-none focus:border-primary"
+                onChange={(e) => { setStoreName(e.target.value); saveConfig(e.target.value, primaryColor); }}
+              />
+              <input 
+                type="color" value={primaryColor} className="w-full h-12 cursor-pointer rounded-lg"
+                onChange={(e) => { setPrimaryColor(e.target.value); saveConfig(storeName, e.target.value); }}
+              />
+            </div>
+          </section>
+
+          <section className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
+            <h3 className="text-xl font-bold mb-6 text-green-600 italic border-b pb-2">Add New Product</h3>
+            <form onSubmit={addProduct} className="space-y-4">
+              <input 
+                type="text" placeholder="Product Name" value={newProductName}
+                className="w-full p-3 border-2 rounded-xl outline-none focus:border-green-500"
+                onChange={(e) => setNewProductName(e.target.value)}
+              />
+              <input 
+                type="number" placeholder="Price (PKR)" value={newProductPrice}
+                className="w-full p-3 border-2 rounded-xl outline-none focus:border-green-500"
+                onChange={(e) => setNewProductPrice(e.target.value)}
+              />
+              <button className="w-full bg-green-600 text-white p-3 rounded-xl font-bold hover:bg-green-700 transition">
+                Add to Store
+              </button>
+            </form>
+          </section>
         </div>
+
+        {/* RIGHT: STOREFRONT (User View) */}
+        <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+          <h3 className="text-xl font-bold mb-6 text-gray-800 italic border-b pb-2">Live Store View</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {products.map(product => (
+              <div key={product.id} className="border p-4 rounded-2xl relative group hover:shadow-md transition">
+                <div className="w-full h-32 bg-gray-100 rounded-xl mb-3 flex items-center justify-center text-gray-400">
+                  No Image
+                </div>
+                <h4 className="font-bold text-gray-700">{product.name}</h4>
+                <p className="text-primary font-black">Rs. {product.price}</p>
+                <button 
+                  onClick={() => deleteProduct(product.id)}
+                  className="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+          {products.length === 0 && <p className="text-center text-gray-400 mt-10">No products added yet.</p>}
+        </div>
+
       </div>
-      
-      <p className="mt-8 text-gray-400 text-xs">Aap jo yahan likhenge, wo puri dunya ko Live nazar aaye ga!</p>
     </div>
   );
 }
