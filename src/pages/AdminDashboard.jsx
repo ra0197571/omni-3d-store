@@ -6,6 +6,35 @@ import { Link } from 'react-router-dom';
 
 export default function AdminDashboard() {
   const { settings } = useContext(AppContext);
+  const [pass, setPass] = useState("");
+  const [isAuth, setIsAuth] = useState(false);
+
+  // Apna password yahan set karein
+  const adminPassword = "admin123"; 
+
+  if (!isAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center">
+          <h2 className="text-2xl font-black mb-6 uppercase italic">Admin Access</h2>
+          <input 
+            type="password" 
+            placeholder="Enter Password" 
+            className="w-full p-4 bg-slate-100 rounded-2xl mb-4 text-center outline-none focus:ring-2 ring-primary" 
+            onChange={(e)=>setPass(e.target.value)} 
+          />
+          <button 
+            onClick={() => pass === adminPassword ? setIsAuth(true) : alert("Ghalat Password!")}
+            className="w-full bg-primary text-white p-4 rounded-2xl font-bold uppercase"
+          >
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+export default function AdminDashboard() {
+  const { settings } = useContext(AppContext);
   const [pName, setPName] = useState("");
   const [pPrice, setPPrice] = useState("");
   const [pImg, setPImg] = useState("");
@@ -83,4 +112,4 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
-}
+}}

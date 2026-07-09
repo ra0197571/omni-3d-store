@@ -82,8 +82,8 @@ export default function Home() {
             >
               <h2 className="text-2xl font-black mb-4 uppercase italic text-primary">Complete Your Order</h2>
               <div className="flex items-center space-x-3 mb-4">
-   <div className="p-3 bg-primary/20 rounded-2xl text-primary text-2xl">🛍️</div>
-   <h2 className="text-2xl font-black uppercase italic text-primary">Complete Your Order</h2>
+              <div className="p-4 bg-primary/20 rounded-[1.5rem] text-4xl mb-4 inline-block">🛍️</div>  
+               <h2 className="text-2xl font-black uppercase italic text-primary">Complete Your Order</h2>
 </div>
               <p className="text-slate-500 mb-6 font-medium">Buying: <span className="text-slate-900">{selectedProduct.name}</span></p>
               
