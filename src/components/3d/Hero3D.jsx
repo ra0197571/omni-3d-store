@@ -1,33 +1,24 @@
+import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, MeshDistortMaterial, Float, ContactShadows } from '@react-three/drei';
+import { OrbitControls, MeshDistortMaterial, Float, Sphere } from '@react-three/drei';
 
 export default function Hero3D({ color }) {
   return (
-    <div className="h-[500px] w-full cursor-grab active:cursor-grabbing">
-      <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-        {/* Behtar Lighting taake cheez chamke */}
+    <div className="h-[400px] w-full">
+      <Canvas camera={{ position: [0, 0, 5] }}>
         <ambientLight intensity={1} />
-        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-        <pointLight position={[-10, -10, -10]} />
-        
-        {/* Floating Animation */}
-        <Float speed={4} rotationIntensity={1} floatIntensity={2}>
-          <mesh scale={1.4}>
-            {/* Ye ek complex khubsurat shape hai jo professional lagta hai */}
-            <torusKnotGeometry args={[1, 0.3, 128, 32]} />
+        <pointLight position={[10, 10, 10]} />
+        <Float speed={3} rotationIntensity={1.5} floatIntensity={2}>
+          <Sphere args={[1, 100, 200]} scale={2}>
             <MeshDistortMaterial
-              color={color || "#a855f7"}
-              speed={3}
+              color={color || "#3b82f6"}
               distort={0.4}
-              metalness={0.9}
-              roughness={0.1}
+              speed={2}
+              metalness={0.8}
+              roughness={0.2}
             />
-          </mesh>
+          </Sphere>
         </Float>
-
-        {/* Neeche wali parchi (Shadow) */}
-        <ContactShadows position={[0, -2.5, 0]} opacity={0.5} scale={10} blur={2.5} far={4.5} />
-        
         <OrbitControls enableZoom={false} autoRotate />
       </Canvas>
     </div>

@@ -7,11 +7,11 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   // src/context/AppContext.jsx mein settings state ko update karein:
 const [settings, setSettings] = useState({
-  storeName: "Loading...",
+  storeName: "My Store",
   primaryColor: "#3b82f6",
-  whatsapp: "",       // Naya
-  jazzCashNo: "",     // Naya
-  easyPaisaNo: "",    // Naya
+  whatsapp: "",
+  jazzCashNo: "",
+  easyPaisaNo: ""
 });
 
   useEffect(() => {
