@@ -2,9 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 
-// Pages (Abhi hum niche hi define kar rahe hain, baad mein files mein shift karenge)
 import Home from './pages/Home';
 import AdminDashboard from './pages/AdminDashboard';
+import ProductDetails from './pages/ProductDetails'; // Naya page import kiya
 
 function App() {
   return (
@@ -13,6 +13,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/product/:id" element={<ProductDetails />} /> {/* Ye line add ki */}
         </Routes>
       </Router>
     </AppProvider>
