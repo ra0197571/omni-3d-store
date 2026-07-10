@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hero3D from '../components/3d/Hero3D';
@@ -9,9 +9,10 @@ import { Link } from 'react-router-dom';
 export default function Home() {
   const { settings } = useContext(AppContext);
   const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null); // Checkout ke liye
+  const [selectedProduct, setSelectedProduct] = useState(null); 
   const [custName, setCustName] = useState("");
   const [custAddress, setCustAddress] = useState("");
+  const [transId, setTransId] = useState(""); // Transaction ID state
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "products"), (s) => {
@@ -21,31 +22,36 @@ export default function Home() {
   }, []);
 
   const sendWhatsAppOrder = async () => {
-  if (!custName || !custAddress) return alert("Please fill your details!");
-  
-  const orderData = {
-    customerName: custName,
-    address: custAddress,
-    productName: selectedProduct.name,
-    price: selectedProduct.price,
-    status: "Pending", // Default status
-    createdAt: new Date()
-  };
+    // Check validation
+    if (!custName || !custAddress || !transId) {
+        return alert("Please fill all details including Transaction ID!");
+    }
+    
+    const orderData = {
+      customerName: custName,
+      address: custAddress,
+      productName: selectedProduct.name,
+      price: selectedProduct.price,
+      transactionId: transId, // Data mein Trx ID add ki
+      status: "Pending",
+      createdAt: new Date()
+    };
 
-  try {
-    // 1. Firebase mein order save karein
-    await addDoc(collection(db, "orders"), orderData);
+    try {
+      // Firebase mein save karne ki koshish
+      await addDoc(collection(db, "orders"), orderData);
+      console.log("Firebase: Order Saved!");
+    } catch (e) {
+      console.log("Firebase Error: Order not saved but opening WhatsApp");
+    }
+
+    // WhatsApp Message
+    const message = `*🔥 NEW ORDER ALERT!*%0A---------------------------%0A*Store:* ${settings.storeName}%0A*Product:* ${selectedProduct.name}%0A*Price:* Rs. ${selectedProduct.price}%0A*Trx ID:* ${transId}%0A---------------------------%0A*Customer:* ${custName}%0A*Address:* ${custAddress}%0A---------------------------%0A_Please confirm my payment._`;
     
-    // 2. Phir WhatsApp kholien
-    const message = `*🔥 NEW ORDER SAVED!*%0A*Product:* ${selectedProduct.name}%0A*Customer:* ${custName}`;
     window.open(`https://wa.me/${settings.whatsapp}?text=${message}`, '_blank');
-    
     setSelectedProduct(null);
-    alert("Order Saved & WhatsApp opened!");
-  } catch (e) {
-    alert("Error saving order");
-  }
-};
+    setTransId(""); // Reset trx id
+  };
 
   return (
     <div className="min-h-screen">
@@ -67,7 +73,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Products */}
+      {/* Products Grid */}
       <div className="max-w-7xl mx-auto p-10 grid grid-cols-1 md:grid-cols-4 gap-8">
         {products.map(p => (
           <motion.div whileHover={{y:-10}} key={p.id} className="bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-2xl border border-slate-100 group">
@@ -98,28 +104,38 @@ export default function Home() {
               exit={{ scale: 0.8, opacity: 0 }}
               className="bg-white p-8 rounded-[3rem] max-w-md w-full shadow-2xl overflow-hidden relative"
             >
-              <h2 className="text-2xl font-black mb-4 uppercase italic text-primary">Complete Your Order</h2>
               <div className="flex items-center space-x-3 mb-4">
-              <div className="p-4 bg-primary/20 rounded-[1.5rem] text-4xl mb-4 inline-block">🛍️</div>  
-               <h2 className="text-2xl font-black uppercase italic text-primary">Complete Your Order</h2>
-</div>
-              <p className="text-slate-500 mb-6 font-medium">Buying: <span className="text-slate-900">{selectedProduct.name}</span></p>
+                <div className="p-4 bg-primary/20 rounded-[1.5rem] text-4xl inline-block">🛍️</div>  
+                <h2 className="text-2xl font-black uppercase italic text-primary leading-tight">Complete <br/> Your Order</h2>
+              </div>
+              
+              <p className="text-slate-500 mb-6 font-medium">Buying: <span className="text-slate-900 font-bold">{selectedProduct.name}</span></p>
               
               <div className="space-y-4">
+                {/* Inputs */}
                 <input type="text" placeholder="Your Name" className="w-full p-4 bg-slate-100 rounded-2xl border-none outline-none focus:ring-2 ring-primary" onChange={(e)=>setCustName(e.target.value)} />
                 <textarea placeholder="Delivery Address" className="w-full p-4 bg-slate-100 rounded-2xl border-none outline-none focus:ring-2 ring-primary" onChange={(e)=>setCustAddress(e.target.value)} />
                 
+                {/* --- YAHAN NAYA CODE ADD KIYA HAI --- */}
                 <div className="bg-primary/10 p-5 rounded-2xl border border-primary/20">
                    <p className="text-xs font-bold text-primary mb-2 uppercase">Payment Details (Manual)</p>
                    {settings.jazzCashNo && <p className="text-sm">JazzCash: <span className="font-bold">{settings.jazzCashNo}</span></p>}
                    {settings.easyPaisaNo && <p className="text-sm">EasyPaisa: <span className="font-bold">{settings.easyPaisaNo}</span></p>}
-                   <p className="text-[10px] mt-2 text-slate-400 italic">*Payment kar ke screenshot WhatsApp pe bhejein.</p>
+                   <p className="text-[10px] mt-2 text-slate-400 italic">*Pehle payment karein phir Trx ID niche likhein.</p>
                 </div>
 
-                <button onClick={sendWhatsAppOrder} className="w-full bg-primary text-white p-5 rounded-2xl font-black uppercase text-lg shadow-xl shadow-primary/30">
+                <input 
+                  type="text" 
+                  placeholder="Enter Transaction ID (Trx ID)" 
+                  className="w-full p-4 bg-slate-50 border-2 border-primary/20 rounded-2xl outline-none focus:border-primary font-bold text-center" 
+                  onChange={(e) => setTransId(e.target.value)} 
+                />
+                {/* --- NAYA CODE KHATAM --- */}
+
+                <button onClick={sendWhatsAppOrder} className="w-full bg-primary text-white p-5 rounded-2xl font-black uppercase text-lg shadow-xl shadow-primary/30 active:scale-95 transition">
                   Confirm via WhatsApp
                 </button>
-                <button onClick={() => setSelectedProduct(null)} className="w-full text-slate-400 font-bold">Cancel</button>
+                <button onClick={() => setSelectedProduct(null)} className="w-full text-slate-400 font-bold hover:text-red-500 transition">Cancel</button>
               </div>
             </motion.div>
           </div>

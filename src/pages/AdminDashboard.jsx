@@ -9,6 +9,9 @@ export default function AdminDashboard() {
   const [isAuth, setIsAuth] = useState(false);
   const [pass, setPass] = useState("");
   const [products, setProducts] = useState([]);
+  
+  // --- NAYI STATES (White screen fix karne ke liye) ---
+  const [orders, setOrders] = useState([]); 
 
   // Product Form States
   const [pName, setPName] = useState("");
@@ -17,11 +20,24 @@ export default function AdminDashboard() {
   const [editId, setEditId] = useState(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "products"), (s) => {
+    // Products fetch karna
+    const unsubProducts = onSnapshot(collection(db, "products"), (s) => {
       setProducts(s.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => unsub();
+
+    // Orders fetch karna (Ye miss tha)
+    const unsubOrders = onSnapshot(collection(db, "orders"), (s) => {
+      setOrders(s.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => {
+        unsubProducts();
+        unsubOrders();
+    };
   }, []);
+
+  // Revenue calculate karna
+  const totalRevenue = orders.reduce((acc, curr) => acc + Number(curr.price || 0), 0);
 
   const updateSettings = async (field, value) => {
     await setDoc(doc(db, "settings", "storeConfig"), { ...settings, [field]: value }, { merge: true });
@@ -111,58 +127,72 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-          
         </section>
-         {/* SECTION 4: DASHBOARD ANALYTICS & ORDERS */}
-<div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-5">
-  <div className="bg-primary text-white p-6 rounded-3xl shadow-xl">
-    <p className="text-sm opacity-80 uppercase font-bold">Total Revenue</p>
-    <h2 className="text-4xl font-black">Rs. {totalRevenue}</h2>
-  </div>
-  <div className="bg-slate-800 text-white p-6 rounded-3xl shadow-xl">
-    <p className="text-sm opacity-80 uppercase font-bold">Total Orders</p>
-    <h2 className="text-4xl font-black">{orders.length}</h2>
-  </div>
-</div>
 
-<section className="col-span-full bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mt-10">
-  <h2 className="text-2xl font-bold mb-6 italic border-b pb-2">Recent Orders</h2>
-  <div className="overflow-x-auto">
-    <table className="w-full text-left">
-      <thead>
-        <tr className="text-slate-400 uppercase text-xs">
-          <th className="p-4">Customer</th>
-          <th className="p-4">Product</th>
-          <th className="p-4">Price</th>
-          <th className="p-4">Status</th>
-          <th className="p-4">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {orders.map(o => (
-          <tr key={o.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-            <td className="p-4 font-bold">{o.customerName} <br/><span className="text-[10px] font-normal text-slate-400">{o.address}</span></td>
-            <td className="p-4">{o.productName}</td>
-            <td className="p-4 font-black text-primary">Rs. {o.price}</td>
-            <td className="p-4">
-               <span className={`px-3 py-1 rounded-full text-xs font-bold ${o.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                {o.status}
-               </span>
-            </td>
-            <td className="p-4">
-              <button 
-                onClick={async () => await updateDoc(doc(db, "orders", o.id), { status: "Shipped" })}
-                className="text-xs bg-slate-900 text-white px-3 py-1 rounded-lg"
-              >
-                Mark Shipped
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</section>
+        {/* SECTION 4: ANALYTICS CARDS */}
+        <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="bg-primary text-white p-6 rounded-3xl shadow-xl">
+            <p className="text-sm opacity-80 uppercase font-bold">Total Revenue</p>
+            <h2 className="text-4xl font-black">Rs. {totalRevenue}</h2>
+          </div>
+          <div className="bg-slate-800 text-white p-6 rounded-3xl shadow-xl">
+            <p className="text-sm opacity-80 uppercase font-bold">Total Orders</p>
+            <h2 className="text-4xl font-black">{orders.length}</h2>
+          </div>
+        </div>
+
+        {/* SECTION 5: ORDERS TABLE */}
+        <section className="col-span-full bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mt-5">
+          <h2 className="text-2xl font-bold mb-6 italic border-b pb-2">Recent Orders</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-slate-400 uppercase text-xs">
+                  <th className="p-4">Customer</th>
+                  <th className="p-4">Product</th>
+                  <th className="p-4">Price</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr key={o.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                    <td className="p-4 font-bold">{o.customerName} <br/><span className="text-[10px] font-normal text-slate-400">{o.address}</span></td>
+                    <td className="p-4">{o.productName}</td>
+                    <td className="p-4 font-black text-primary">Rs. {o.price}</td>
+                    <td className="p-4">
+                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${o.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
+                        {o.status}
+                       </span>
+                    </td>
+                    <td className="p-4">
+                      <button 
+                        onClick={async () => await updateDoc(doc(db, "orders", o.id), { status: "Shipped" })}
+                        className="text-xs bg-slate-900 text-white px-3 py-1 rounded-lg"
+                      >
+                        Mark Shipped
+                      </button>
+                      {/* Delete Order Button */}
+                          <button 
+                     onClick={async () => {
+                     if(window.confirm("Kyu aap is order ko delete karna chahte hain?")) {
+                      await deleteDoc(doc(db, "orders", o.id));
+                         }
+                        }}
+          className="text-xs bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
+  >
+    Delete
+  </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {orders.length === 0 && <p className="text-center p-10 text-slate-400">No orders yet.</p>}
+          </div>
+        </section>
+
       </div>
     </div>
   );
