@@ -111,8 +111,58 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
+          
         </section>
+         {/* SECTION 4: DASHBOARD ANALYTICS & ORDERS */}
+<div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-5">
+  <div className="bg-primary text-white p-6 rounded-3xl shadow-xl">
+    <p className="text-sm opacity-80 uppercase font-bold">Total Revenue</p>
+    <h2 className="text-4xl font-black">Rs. {totalRevenue}</h2>
+  </div>
+  <div className="bg-slate-800 text-white p-6 rounded-3xl shadow-xl">
+    <p className="text-sm opacity-80 uppercase font-bold">Total Orders</p>
+    <h2 className="text-4xl font-black">{orders.length}</h2>
+  </div>
+</div>
 
+<section className="col-span-full bg-white p-8 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mt-10">
+  <h2 className="text-2xl font-bold mb-6 italic border-b pb-2">Recent Orders</h2>
+  <div className="overflow-x-auto">
+    <table className="w-full text-left">
+      <thead>
+        <tr className="text-slate-400 uppercase text-xs">
+          <th className="p-4">Customer</th>
+          <th className="p-4">Product</th>
+          <th className="p-4">Price</th>
+          <th className="p-4">Status</th>
+          <th className="p-4">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {orders.map(o => (
+          <tr key={o.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
+            <td className="p-4 font-bold">{o.customerName} <br/><span className="text-[10px] font-normal text-slate-400">{o.address}</span></td>
+            <td className="p-4">{o.productName}</td>
+            <td className="p-4 font-black text-primary">Rs. {o.price}</td>
+            <td className="p-4">
+               <span className={`px-3 py-1 rounded-full text-xs font-bold ${o.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
+                {o.status}
+               </span>
+            </td>
+            <td className="p-4">
+              <button 
+                onClick={async () => await updateDoc(doc(db, "orders", o.id), { status: "Shipped" })}
+                className="text-xs bg-slate-900 text-white px-3 py-1 rounded-lg"
+              >
+                Mark Shipped
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
       </div>
     </div>
   );

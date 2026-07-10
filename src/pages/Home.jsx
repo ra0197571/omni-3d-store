@@ -20,14 +20,32 @@ export default function Home() {
     return () => unsub();
   }, []);
 
-  const sendWhatsAppOrder = () => {
-    if (!custName || !custAddress) return alert("Please fill your details!");
-    
-    const message = `*🔥 NEW ORDER ALERT!*%0A---------------------------%0A*Store:* ${settings.storeName}%0A*Product:* ${selectedProduct.name}%0A*Price:* Rs. ${selectedProduct.price}%0A---------------------------%0A*Customer:* ${custName}%0A*Address:* ${custAddress}%0A---------------------------%0A_Please confirm my order._`;
-    
-    window.open(`https://wa.me/${settings.whatsapp}?text=${message}`, '_blank');
-    setSelectedProduct(null);
+  const sendWhatsAppOrder = async () => {
+  if (!custName || !custAddress) return alert("Please fill your details!");
+  
+  const orderData = {
+    customerName: custName,
+    address: custAddress,
+    productName: selectedProduct.name,
+    price: selectedProduct.price,
+    status: "Pending", // Default status
+    createdAt: new Date()
   };
+
+  try {
+    // 1. Firebase mein order save karein
+    await addDoc(collection(db, "orders"), orderData);
+    
+    // 2. Phir WhatsApp kholien
+    const message = `*🔥 NEW ORDER SAVED!*%0A*Product:* ${selectedProduct.name}%0A*Customer:* ${custName}`;
+    window.open(`https://wa.me/${settings.whatsapp}?text=${message}`, '_blank');
+    
+    setSelectedProduct(null);
+    alert("Order Saved & WhatsApp opened!");
+  } catch (e) {
+    alert("Error saving order");
+  }
+};
 
   return (
     <div className="min-h-screen">
