@@ -65,7 +65,10 @@ export default function Home() {
       {/* Navbar */}
       <nav className="p-4 md:p-6 bg-primary text-white flex justify-between items-center shadow-xl sticky top-0 z-50">
         <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter truncate max-w-[200px] md:max-w-none">{settings.storeName}</h1>
-        <Link to="/admin" className="bg-white/20 px-5 py-2 rounded-full hover:bg-white/40 backdrop-blur-md font-bold text-sm transition">Admin</Link>
+<div className="flex gap-2">
+   <Link to="/track" className="bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 text-xs font-bold transition">Track Order</Link>
+   <Link to="/admin" className="bg-white/20 px-4 py-2 rounded-full hover:bg-white/40 font-bold text-xs">Admin</Link>
+</div>        
       </nav>
 
       {/* Hero Section */}
