@@ -6,7 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Hero3D from '../components/3d/Hero3D';
 import { Link } from 'react-router-dom';
 import Footer from '../components/Footer'; 
-
+import { AuthContext } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
+  // Ye line missing thi
 export default function Home() {
   const { settings } = useContext(AppContext);
   const [products, setProducts] = useState([]);
@@ -17,7 +19,7 @@ export default function Home() {
   const [custName, setCustName] = useState("");
   const [custAddress, setCustAddress] = useState("");
   const [transId, setTransId] = useState("");
-
+ const { addToCart } = useContext(CartContext);
   useEffect(() => {
     const unsubProducts = onSnapshot(collection(db, "products"), (s) => {
       setProducts(s.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -33,43 +35,88 @@ export default function Home() {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const sendWhatsAppOrder = async () => {
-    if (!custName || !custAddress || !transId) return alert("Please fill all details including Transaction ID!");
+  // Pehle AuthContext se user nikaalein (Top par)
+const { user, logout } = useContext(AuthContext); 
+const { totalItems } = useContext(CartContext);
+const sendWhatsAppOrder = async () => {
+    if (!custName || !custAddress || !transId) return alert("Fill details!");
     
     try {
-        // 1. Update Stock in Firebase
         const productRef = doc(db, "products", selectedProduct.id);
         const newStock = Number(selectedProduct.stock) - 1;
         await updateDoc(productRef, { stock: newStock });
 
-        // 2. Save Order to Firebase
+        // Save Order with User Link
         await addDoc(collection(db, "orders"), {
-          customerName: custName, address: custAddress,
-          productName: selectedProduct.name, price: selectedProduct.price,
-          transactionId: transId, status: "Pending", createdAt: new Date()
+          customerName: custName, 
+          address: custAddress,
+          productName: selectedProduct.name, 
+          price: selectedProduct.price,
+          transactionId: transId, 
+          status: "Pending", 
+          createdAt: new Date(),
+          userId: user ? user.uid : "guest" // <--- Ye line user ko order se link kare gi
         });
 
-        // 3. Open WhatsApp
-        const message = `*🔥 NEW ORDER ALERT!*%0A---------------------------%0A*Store:* ${settings.storeName}%0A*Product:* ${selectedProduct.name}%0A*Price:* Rs. ${selectedProduct.price}%0A*Trx ID:* ${transId}%0A---------------------------%0A*Customer:* ${custName}%0A*Address:* ${custAddress}%0A---------------------------%0A_Please confirm my order._`;
-        window.open(`https://wa.me/${settings.whatsapp}?text=${message}`, '_blank');
-        
-        setSelectedProduct(null);
-        setTransId(""); setCustName(""); setCustAddress("");
-    } catch (e) {
-        alert("Error saving order. Please try again.");
-    }
-  };
+        // WhatsApp redirect logic...
+    } catch (e) { alert(e.message); }
+};
 
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
       <nav className="p-4 md:p-6 bg-primary text-white flex justify-between items-center shadow-xl sticky top-0 z-50">
-        <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter truncate max-w-[200px] md:max-w-none">{settings.storeName}</h1>
-<div className="flex gap-2">
-   <Link to="/track" className="bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 text-xs font-bold transition">Track Order</Link>
-   <Link to="/admin" className="bg-white/20 px-4 py-2 rounded-full hover:bg-white/40 font-bold text-xs">Admin</Link>
-</div>        
-      </nav>
+  {/* Logo / Store Name */}
+  <h1>
+  {/* Logo / Store Name Fix */}
+<Link to="/" className="flex items-center gap-3">
+  {settings.logoUrl ? (
+    <img src={settings.logoUrl} alt="Logo" className="h-8 md:h-12 w-auto object-contain" />
+  ) : (
+    <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter truncate max-w-[150px] md:max-w-none">
+      {settings.storeName || "Omni Store"}
+    </h1>
+  )}
+</Link>
+  </h1>
+  
+
+  {/* Navigation Links */}
+  <div className="flex items-center gap-2">
+    <Link to="/track" className="hidden sm:block bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition">
+      Track
+    </Link>
+     <Link to="/cart" className="relative p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
+  <span className="text-xl">🛒</span>
+  {totalItems > 0 && (
+    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+      {totalItems}
+    </span>
+  )}
+</Link>
+    {user ? (
+      <div className="flex items-center gap-2 bg-black/10 p-1 pl-4 rounded-full border border-white/10">
+        <span className="text-[9px] font-black uppercase opacity-60 hidden md:block">
+          Hi, {user?.name || 'User'}
+        </span>
+        <button 
+          onClick={() => { if(window.confirm("Logout?")) logout(); }} 
+          className="bg-white text-primary px-4 py-2 rounded-full text-[10px] font-black uppercase shadow-lg active:scale-95 transition"
+        >
+          Logout
+        </button>
+      </div>
+    ) : (
+      <Link to="/auth" className="bg-white text-primary px-6 py-2 rounded-full font-black text-[10px] uppercase shadow-lg hover:scale-105 transition">
+        Login
+      </Link>
+    )}
+      
+    <Link to="/admin" className="bg-slate-900 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase border border-white/20">
+      Admin
+    </Link>
+  </div>        
+</nav>
 
       {/* Hero Section */}
       <div className="flex flex-col md:flex-row items-center max-w-7xl mx-auto p-6 md:p-10 gap-10 min-h-[60vh]">
@@ -125,6 +172,18 @@ export default function Home() {
                     >
                       {p.stock > 0 ? 'Buy Now' : 'No Stock'}
                     </button>
+                   
+                 <button 
+  disabled={p.stock <= 0} // <--- Ye line add karein
+  onClick={(e) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    addToCart(p, 1); 
+  }}
+  className={`${p.stock <= 0 ? 'bg-slate-200 cursor-not-allowed opacity-50' : 'bg-slate-100 hover:bg-slate-200'} text-slate-800 p-3 rounded-2xl transition`}
+>
+  {p.stock <= 0 ? 'X' : '+ Add'} 
+</button>
                  </div>
                </div>
             </motion.div>

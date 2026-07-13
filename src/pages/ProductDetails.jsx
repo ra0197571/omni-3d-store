@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, addDoc, updateDoc, collection } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { AppContext } from '../context/AppContext';
+import { AuthContext } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import Product3DViewer from '../components/3d/Product3DViewer';
 import Footer from '../components/Footer'; 
@@ -11,6 +12,8 @@ export default function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { settings } = useContext(AppContext);
+  const { user } = useContext(AuthContext);
+  
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,6 +22,10 @@ export default function ProductDetails() {
   const [custName, setCustName] = useState("");
   const [custAddress, setCustAddress] = useState("");
   const [transId, setTransId] = useState("");
+  const [qty, setQty] = useState(1); // Default quantity 1
+  const [note, setNote] = useState(""); // Extra message
+
+  const themeColor = settings.primaryColor || "#ff0000";
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "products", id), (doc) => {
@@ -31,110 +38,70 @@ export default function ProductDetails() {
   }, [id]);
 
   const handleOrder = async () => {
-    if (!custName || !custAddress || !transId) return alert("Fill all details!");
+    if (!custName || !custAddress || !transId) return alert("Please fill all details!");
+    if (qty > product.stock) return alert("Not enough stock available!");
+
     try {
-      // 1. Update Stock
-      await updateDoc(doc(db, "products", id), { stock: Number(product.stock) - 1 });
+      // 1. Update Stock based on Quantity
+      await updateDoc(doc(db, "products", id), { 
+        stock: Number(product.stock) - Number(qty) 
+      });
       
-      // 2. Save Order
+      // 2. Save Order with Details
       await addDoc(collection(db, "orders"), {
-        customerName: custName, address: custAddress,
-        productName: product.name, price: product.price,
-        transactionId: transId, status: "Pending", createdAt: new Date()
+        customerName: custName, 
+        address: custAddress,
+        productName: product.name, 
+        price: Number(product.price) * Number(qty),
+        quantity: qty,
+        customerNote: note,
+        transactionId: transId, 
+        status: "Pending", 
+        createdAt: new Date(),
+        userId: user ? user.uid : "guest"
       });
 
       // 3. Open WhatsApp
-      const message = `*🔥 NEW ORDER!*%0A---------------------------%0A*Product:* ${product.name}%0A*Price:* Rs. ${product.price}%0A*Trx ID:* ${transId}%0A---------------------------%0A*Customer:* ${custName}%0A*Address:* ${custAddress}`;
+      const message = `*🔥 NEW ORDER!*%0A---------------------------%0A*Product:* ${product.name}%0A*Qty:* ${qty}%0A*Total Price:* Rs. ${Number(product.price) * qty}%0A*Note:* ${note || 'None'}%0A---------------------------%0A*Customer:* ${custName}%0A*Address:* ${custAddress}%0A*Trx ID:* ${transId}`;
       window.open(`https://wa.me/${settings.whatsapp}?text=${message}`, '_blank');
       
+      alert("Order Placed Successfully!");
       setShowModal(false);
     } catch (e) {
-      alert("Error placing order. Check connection.");
+      alert("Error: " + e.message);
     }
   };
 
-  if (loading) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-white space-y-4">
-      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      <p className="font-black italic uppercase text-slate-300 tracking-[0.5em]">Loading Experience</p>
-    </div>
-  );
-
-  if (!product) return <div className="h-screen flex items-center justify-center font-black uppercase text-red-500">Product not found.</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center font-black animate-pulse">LOADING...</div>;
+  if (!product) return <div className="h-screen flex items-center justify-center font-black">PRODUCT NOT FOUND</div>;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white font-sans">
       <div className="p-5 md:p-10 lg:p-20">
-          {/* Header */}
           <div className="max-w-7xl mx-auto flex justify-between items-center mb-16">
-              <button onClick={() => navigate(-1)} className="font-black uppercase italic text-primary hover:tracking-widest transition-all">← Back to Store</button>
-              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-300 hidden md:block">OMNI-3D INTERACTIVE</span>
+              <button onClick={() => navigate(-1)} className="font-black uppercase italic hover:tracking-widest transition-all" style={{ color: themeColor }}>← Back to Store</button>
+              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-300">OMNI-3D INTERACTIVE</span>
           </div>
           
-          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-16 md:gap-24">
-            
-            {/* Left Column: Visuals */}
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-16">
             <div className="flex-1 space-y-12">
-              <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} className="bg-slate-50 rounded-[3.5rem] overflow-hidden shadow-2xl border-4 border-white">
+              <div className="bg-slate-50 rounded-[3.5rem] overflow-hidden shadow-2xl border-4 border-white">
                 <img src={product.image} className="w-full h-auto object-cover" alt={product.name} />
-              </motion.div>
-
-              {/* 3D Model Section */}
-              {product.model3D && (
-                <motion.div initial={{opacity:0}} whileInView={{opacity:1}} viewport={{once:true}} className="space-y-6">
-                  <div className="flex items-center space-x-4 border-l-4 border-primary pl-4">
-                    <h3 className="font-black uppercase italic text-slate-400 text-sm tracking-[0.2em]">3D Interactive Preview</h3>
-                  </div>
-                  <Product3DViewer modelUrl={product.model3D} />
-                  <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Touch to rotate • Scroll to zoom</p>
-                </motion.div>
-              )}
+              </div>
+              {product.model3D && <Product3DViewer modelUrl={product.model3D} />}
             </div>
 
-            {/* Right Column: Information */}
             <div className="flex-1 space-y-12">
               <div className="space-y-4">
-                 <span className="bg-primary/10 text-primary px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] inline-block shadow-sm">
-                    {product.category}
-                 </span>
-                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-black uppercase italic leading-[0.85] tracking-tighter text-slate-900">
-                    {product.name}
-                 </h1>
+                 <span className="bg-slate-100 px-6 py-2 rounded-full text-[10px] font-black uppercase inline-block" style={{ color: themeColor }}>{product.category}</span>
+                 <h1 className="text-6xl font-black uppercase italic leading-none">{product.name}</h1>
               </div>
+              <p className="text-5xl font-black font-mono italic" style={{ color: themeColor }}>Rs.{product.price}</p>
+              <p className="text-slate-600 text-xl font-medium">{product.description}</p>
 
-              <div className="flex items-baseline space-x-3">
-                 <p className="text-5xl md:text-7xl font-black text-primary font-mono italic">Rs.{product.price}</p>
-                 <span className="text-slate-300 font-bold uppercase text-[10px] tracking-widest">Inclusive of taxes</span>
-              </div>
-              
-              <div className="space-y-6 border-t border-slate-100 pt-12">
-                 <h3 className="font-black uppercase italic text-slate-400 tracking-[0.2em] text-xs">Product Description</h3>
-                 <p className="text-slate-600 leading-relaxed text-xl font-medium whitespace-pre-wrap">
-                    {product.description || "Experience the future of premium shopping with our next-generation 3D visualization and interactive store interface."}
-                 </p>
-              </div>
-
-              {/* Action Box */}
-              <div className="bg-slate-900 text-white p-10 rounded-[4rem] flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl border-b-8 border-primary">
-                 <div className="text-center md:text-left">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-2">Availability</p>
-                    <p className={`text-2xl font-black uppercase italic ${product.stock > 0 ? 'text-white' : 'text-red-500'}`}>
-                       {product.stock > 0 ? `${product.stock} Units Left` : "Out of Stock"}
-                    </p>
-                 </div>
-                 
-                 {product.stock > 0 ? (
-                   <button 
-                     onClick={() => setShowModal(true)} 
-                     className="w-full md:w-auto bg-primary text-white px-14 py-6 rounded-3xl font-black uppercase italic text-xl shadow-xl shadow-primary/40 active:scale-95 transition-all hover:px-16"
-                   >
-                     Buy Now
-                   </button>
-                 ) : (
-                   <button disabled className="w-full md:w-auto bg-slate-800 text-slate-600 px-14 py-6 rounded-3xl font-black uppercase italic cursor-not-allowed border border-white/5">
-                     Sold Out
-                   </button>
-                 )}
+              <div className="bg-slate-900 text-white p-10 rounded-[4rem] flex flex-col md:flex-row items-center justify-between gap-8 border-b-8" style={{ borderBottomColor: themeColor }}>
+                 <p className="text-2xl font-black uppercase italic">{product.stock > 0 ? `${product.stock} In Stock` : "Out of Stock"}</p>
+                 {product.stock > 0 && <button onClick={() => setShowModal(true)} className="w-full md:w-auto text-white px-14 py-6 rounded-3xl font-black uppercase italic text-xl shadow-xl active:scale-95 transition-all" style={{ backgroundColor: themeColor }}>Buy Now</button>}
               </div>
             </div>
           </div>
@@ -146,41 +113,39 @@ export default function ProductDetails() {
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-            <motion.div initial={{scale:0.9, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.9, opacity:0}} className="bg-white p-8 md:p-12 rounded-[4rem] max-w-md w-full shadow-2xl relative max-h-[95vh] overflow-y-auto border-t-8 border-primary">
-               <div className="text-center mb-10">
-                 <h2 className="text-3xl font-black uppercase italic text-primary leading-none">Checkout</h2>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Secure Manual Payment Process</p>
-               </div>
+            <motion.div initial={{scale:0.9, opacity:0}} animate={{scale:1, opacity:1}} className="bg-white p-8 md:p-12 rounded-[4rem] max-w-lg w-full shadow-2xl relative max-h-[95vh] overflow-y-auto border-t-8" style={{ borderTopColor: themeColor }}>
+               
+               <h2 className="text-3xl font-black uppercase italic text-center mb-10" style={{ color: themeColor }}>Checkout</h2>
 
                <div className="space-y-5">
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black uppercase text-slate-400 ml-3">Your Full Name</label>
-                     <input type="text" placeholder="Ahmad Ali" className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none focus:ring-2 ring-primary transition-all" onChange={(e)=>setCustName(e.target.value)} />
-                  </div>
-
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black uppercase text-slate-400 ml-3">Delivery Address</label>
-                     <textarea placeholder="Complete House Address..." className="w-full p-5 bg-slate-50 rounded-2xl h-28 font-bold outline-none focus:ring-2 ring-primary resize-none transition-all" onChange={(e)=>setCustAddress(e.target.value)} />
-                  </div>
-
-                  {/* Payment Details */}
-                  <div className="bg-slate-900 text-white p-6 rounded-[2.5rem] border-2 border-primary/30 shadow-xl">
-                    <p className="text-[10px] font-black text-primary uppercase mb-4 tracking-widest text-center italic underline">Payable: Rs.{product.price}</p>
-                    <div className="space-y-3 text-xs font-bold font-mono">
-                      {settings.jazzCashNo && <div className="flex justify-between border-b border-white/5 pb-2"><span>JazzCash</span><span className="text-primary">{settings.jazzCashNo}</span></div>}
-                      {settings.easyPaisaNo && <div className="flex justify-between"><span>EasyPaisa</span><span className="text-primary">{settings.easyPaisaNo}</span></div>}
+                  {/* Order Preview */}
+                  <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-dashed border-slate-200">
+                    <p className="font-bold uppercase text-xs">Product: {product.name}</p>
+                    <div className="flex items-center gap-3">
+                        <p className="text-[10px] font-black uppercase opacity-40">Qty:</p>
+                        <input type="number" value={qty} min="1" max={product.stock} className="w-16 p-2 bg-white border-2 rounded-xl text-center font-black" style={{ borderColor: themeColor }} onChange={(e) => setQty(e.target.value)} />
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black uppercase text-primary ml-3 tracking-widest italic">Enter Transaction ID (10-Digits)</label>
-                     <input type="text" placeholder="Trx ID" className="w-full p-5 bg-primary/5 border-2 border-primary rounded-3xl outline-none text-center font-black text-primary text-2xl tracking-tighter" onChange={(e)=>setTransId(e.target.value)} />
+                  <input type="text" placeholder="Your Full Name" className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none" onChange={(e)=>setCustName(e.target.value)} />
+                  <textarea placeholder="Delivery Address" className="w-full p-5 bg-slate-50 rounded-2xl h-24 font-bold outline-none" onChange={(e)=>setCustAddress(e.target.value)} />
+                  
+                  {/* Extra Note Box */}
+                  <textarea placeholder="Any message for us? (Optional)" className="w-full p-5 bg-slate-50 rounded-2xl h-20 font-bold outline-none text-sm italic" onChange={(e)=>setNote(e.target.value)} />
+
+                  <div className="bg-slate-900 text-white p-6 rounded-[2.5rem] shadow-xl text-center">
+                    <p className="text-[10px] font-black uppercase mb-2 tracking-widest" style={{ color: themeColor }}>Grand Total</p>
+                    <h3 className="text-4xl font-black italic">Rs.{Number(product.price) * qty}</h3>
+                    <div className="mt-4 pt-4 border-t border-white/5 space-y-1 text-[10px] font-bold font-mono">
+                      {settings.jazzCashNo && <div className="flex justify-between"><span>JazzCash</span><span style={{ color: themeColor }}>{settings.jazzCashNo}</span></div>}
+                      {settings.easyPaisaNo && <div className="flex justify-between"><span>EasyPaisa</span><span style={{ color: themeColor }}>{settings.easyPaisaNo}</span></div>}
+                    </div>
                   </div>
 
-                  <button onClick={handleOrder} className="w-full bg-primary text-white p-6 rounded-3xl font-black uppercase text-xl shadow-2xl shadow-primary/40 active:scale-95 transition-all mt-4 hover:shadow-primary/60">
-                    Confirm Order
-                  </button>
-                  <button onClick={()=>setShowModal(false)} className="w-full text-slate-400 py-2 font-black uppercase text-[10px] tracking-[0.3em] hover:text-red-500 transition-colors">Wait, Go Back</button>
+                  <input type="text" placeholder="Enter Transaction ID" className="w-full p-5 bg-primary/5 border-2 rounded-3xl outline-none text-center font-black text-2xl" style={{ borderColor: themeColor, color: themeColor }} onChange={(e)=>setTransId(e.target.value)} />
+
+                  <button onClick={handleOrder} className="w-full text-white p-6 rounded-3xl font-black uppercase text-xl shadow-xl active:scale-95 transition-all" style={{ backgroundColor: themeColor }}>Confirm Order</button>
+                  <button onClick={()=>setShowModal(false)} className="w-full text-slate-400 py-2 font-black uppercase text-[10px] text-center">Cancel</button>
                </div>
             </motion.div>
           </div>
