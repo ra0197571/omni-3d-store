@@ -10,9 +10,13 @@ export default function Cart() {
   const { settings } = useContext(AppContext);
   const themeColor = settings.primaryColor || "#ff0000";
 
+  // --- NAYI DYNAMIC LOGIC ---
+  const shipping = Number(settings.shippingFee || 0);
+  const grandTotal = totalPrice + shipping;
+
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center space-y-6">
+      <div className="min-h-screen flex flex-col items-center justify-center space-y-6 bg-white font-sans">
         <h2 className="text-4xl font-black uppercase italic opacity-20">Your Cart is Empty</h2>
         <Link to="/" className="bg-slate-900 text-white px-10 py-4 rounded-full font-black uppercase text-xs shadow-xl">Start Shopping</Link>
       </div>
@@ -28,7 +32,7 @@ export default function Cart() {
 
       <div className="max-w-7xl mx-auto p-6 md:p-10 flex flex-col lg:flex-row gap-10">
         
-        {/* Items List */}
+        {/* Items List (Exactly your design) */}
         <div className="flex-[2] space-y-4">
           {cartItems.map(item => (
             <motion.div layout key={item.id} className="bg-white p-6 rounded-[2.5rem] flex items-center justify-between shadow-sm border border-slate-100 group">
@@ -52,7 +56,7 @@ export default function Cart() {
           ))}
         </div>
 
-        {/* Summary Card */}
+        {/* Summary Card (Updated Logic) */}
         <div className="flex-1">
           <div className="bg-slate-900 text-white p-10 rounded-[3.5rem] shadow-2xl sticky top-24 border-b-8" style={{ borderBottomColor: themeColor }}>
             <h2 className="text-2xl font-black uppercase italic mb-8">Order Summary</h2>
@@ -61,17 +65,23 @@ export default function Cart() {
                 <span>Subtotal</span>
                 <span>Rs.{totalPrice}</span>
               </div>
+              
+              {/* --- YAHAN SHIPPNG DYNAMIC HO GAYI --- */}
               <div className="flex justify-between text-sm opacity-60 font-bold uppercase">
                 <span>Shipping</span>
-                <span className="text-green-400">FREE</span>
+                <span className={shipping === 0 ? "text-green-400" : "text-white"}>
+                    {shipping === 0 ? "FREE" : `Rs.${shipping}`}
+                </span>
               </div>
+
               <div className="flex justify-between pt-4 border-t border-white/10">
-                <span className="font-black uppercase italic">Total</span>
-                <span className="text-3xl font-black text-primary font-mono" style={{ color: themeColor }}>Rs.{totalPrice}</span>
+                <span className="font-black uppercase italic">Total Bill</span>
+                {/* --- TOTAL MEIN SHIPPING PLUS HO GAYI --- */}
+                <span className="text-3xl font-black text-primary font-mono" style={{ color: themeColor }}>Rs.{grandTotal}</span>
               </div>
             </div>
 
-            <Link to="/checkout" className="block w-full text-center mt-10 py-6 rounded-3xl font-black uppercase text-xl shadow-xl transition-all active:scale-95" style={{ backgroundColor: themeColor }}>
+            <Link to="/checkout" className="block w-full text-center mt-10 py-6 rounded-3xl font-black uppercase text-xl shadow-xl transition-all active:scale-95 hover:brightness-110" style={{ backgroundColor: themeColor }}>
                 Checkout Now
             </Link>
           </div>

@@ -10,6 +10,7 @@ export const AppProvider = ({ children }) => {
 const [settings, setSettings] = useState({
   storeName: "My Store",
   primaryColor: "#3b82f6",
+  shippingFee: 0,
   logoUrl: "",
   whatsapp: "",
   facebook: "", // Naya
