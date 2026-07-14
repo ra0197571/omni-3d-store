@@ -42,7 +42,7 @@ export default function AdminDashboard() {
   const [pDesc, setPDesc] = useState(""); 
   const [pModel, setPModel] = useState(""); 
   const [newCatName, setNewCatName] = useState("");
-
+// Isay upar dhoondein aur wahan ye add karein
   // 1. SECURITY: Firebase Auth Check
   useEffect(() => {
     if (!authLoading && (!user || user.email !== ADMIN_EMAIL)) {
@@ -96,6 +96,7 @@ export default function AdminDashboard() {
     } catch (err) { alert("Email Failed"); }
   };
 
+  
   // 4. REAL-TIME DATA (Only active in Dashboard View)
   useEffect(() => {
     if (view === 'dashboard') {
@@ -191,31 +192,31 @@ export default function AdminDashboard() {
     else { await addDoc(collection(db, "products"), { ...data, createdAt: new Date() }); }
     setPName(""); setPPrice(""); setPImg(""); setPCat(""); setPStock(""); setPDesc("");
   };
-  const [uploading, setUploading] = useState(false);
+const [uploading, setUploading] = useState(false);
 
+// --- DYNAMIC UPLOAD FUNCTION ---
 const handleImageUpload = async (e) => {
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) return null;
 
   setUploading(true);
-  const apiKey = "5ef060cc49c578628a4f76bfebc26739"; // <--- Dashboard se copy ki hui key yahan paste karein
+  const apiKey = "5ef060cc49c578628a4f76bfebc26739"; // Aapki key
   const formData = new FormData();
   formData.append("image", file);
 
   try {
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
       method: "POST",
       body: formData,
     });
-    const data = await response.json();
-    if (data.success) {
-      setPImg(data.data.url); // Firestore mein ye link save hoga
-    }
-  } catch (error) {
-    alert("Upload failed. Try again.");
+    const data = await res.json();
+    if (data.success) return data.data.url;
+  } catch (err) {
+    alert("Upload failed!");
   } finally {
     setUploading(false);
   }
+  return null;
 };
   // --- RENDER SECURITY VIEWS ---
 
@@ -271,44 +272,39 @@ const handleImageUpload = async (e) => {
   
   <div className="space-y-6">
     {/* --- BRAND LOGO UPLOAD AREA --- */}
-    <div className="flex flex-col items-center gap-4 p-6 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 group hover:border-primary transition-all">
-       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Official Brand Logo</p>
-       
-       {/* Logo Preview */}
-       <div className="h-24 w-24 bg-white rounded-3xl shadow-inner flex items-center justify-center overflow-hidden border-2 border-white">
-          {settings.logoUrl ? (
-            <img src={settings.logoUrl} className="h-full w-full object-contain p-2" alt="Store Logo" />
-          ) : (
-            <span className="text-3xl grayscale opacity-20">🖼️</span>
-          )}
-       </div>
+    {/* --- BRAND LOGO AREA --- */}
+<div className="flex flex-col items-center gap-4 p-6 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
+   <p className="text-[10px] font-black uppercase text-slate-400">Official Brand Logo</p>
+   
+   <div className="h-24 w-24 bg-white rounded-3xl shadow-inner flex items-center justify-center overflow-hidden border-2 border-white">
+      {settings.logoUrl ? (
+        <img src={settings.logoUrl} className="h-full w-full object-contain p-2" alt="Logo" />
+      ) : (
+        <span className="text-3xl grayscale opacity-20">🖼️</span>
+      )}
+   </div>
 
-       {/* Hidden File Input */}
-       <input 
-         type="file" 
-         id="logo-upload" 
-         accept="image/*"
-         className="hidden" 
-         onChange={async (e) => {
-           const file = e.target.files[0];
-           if(file) {
-             const url = await handleImageUpload(e); // Aapka existing ImgBB function use hoga
-             if(url) {
-               await updateSettings('logoUrl', url); // Database mein save
-               alert("Brand Logo Updated!");
-             }
-           }
-         }} 
-       />
-       
-       {/* Styled Label as Button */}
-       <label 
-         htmlFor="logo-upload" 
-         className={`px-6 py-2 rounded-xl font-black uppercase text-[9px] cursor-pointer transition-all shadow-lg active:scale-95 ${uploading ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-primary'}`}
-       >
-         {uploading ? "Uploading..." : settings.logoUrl ? "Change Logo" : "Upload Logo"}
-       </label>
-    </div>
+   <input 
+  type="file" 
+  id="logo-upload"
+  accept="image/*"
+  className="hidden" 
+  onChange={async (e) => {
+    const url = await handleImageUpload(e); // Ab naam match kare ga
+    if(url) {
+      await setDoc(doc(db, "settings", "storeConfig"), { ...settings, logoUrl: url }, { merge: true });
+      alert("Logo Saved!");
+    }
+  }} 
+/>
+   
+   <label 
+     htmlFor="logo-upload" 
+     className={`px-6 py-2 rounded-xl font-black uppercase text-[9px] cursor-pointer transition-all shadow-lg ${uploading ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-primary'}`}
+   >
+     {uploading ? "Uploading..." : "Upload Logo"}
+   </label>
+</div>
 
     {/* --- STORE NAME INPUT --- */}
     <div>
@@ -344,7 +340,29 @@ const handleImageUpload = async (e) => {
     </div>
   </div>
 </section>
+{/* DYNAMIC BRANDING & SOCIAL SECTION */}
+<section className="bg-white p-8 rounded-[3rem] border-2 border-slate-50 shadow-sm space-y-6">
+  <h2 className="text-xl font-black italic text-slate-800 uppercase border-b pb-4 tracking-tighter">Banners & Socials</h2>
+  
+  <div className="space-y-4">
+    {/* Hero Text */}
+    <div>
+      <p className="text-[10px] font-black uppercase text-slate-400 mb-1 ml-2">Hero Main Heading</p>
+      <input type="text" value={settings.heroHeading} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" onChange={(e)=>updateSettings('heroHeading', e.target.value)} />
+    </div>
+    <div>
+      <p className="text-[10px] font-black uppercase text-slate-400 mb-1 ml-2">Hero Sub-Heading</p>
+      <input type="text" value={settings.heroSubheading} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" onChange={(e)=>updateSettings('heroSubheading', e.target.value)} />
+    </div>
 
+    {/* Social Links */}
+    <div className="grid grid-cols-1 gap-3 pt-4 border-t border-dashed">
+      <input type="text" value={settings.facebook} placeholder="Facebook Link" className="w-full p-4 bg-slate-50 border rounded-xl text-xs font-bold" onChange={(e)=>updateSettings('facebook', e.target.value)} />
+      <input type="text" value={settings.instagram} placeholder="Instagram Link" className="w-full p-4 bg-slate-50 border rounded-xl text-xs font-bold" onChange={(e)=>updateSettings('instagram', e.target.value)} />
+      <input type="text" value={settings.youtube} placeholder="YouTube Link" className="w-full p-4 bg-slate-50 border rounded-xl text-xs font-bold" onChange={(e)=>updateSettings('youtube', e.target.value)} />
+    </div>
+  </div>
+</section>
           <section className="bg-white p-6 md:p-8 rounded-[3rem] border-2 border-slate-50 shadow-sm space-y-4">
             <h2 className="text-xl font-black italic uppercase">Payments (Manual)</h2>
             <div className="space-y-2">
@@ -399,12 +417,13 @@ const handleImageUpload = async (e) => {
           <p className="text-[9px] text-white/40 mb-1 font-black ml-2 uppercase italic">Step 1: Upload Product Photo</p>
           <div className="relative group">
             <input 
-              type="file" 
-              accept="image/*"
-              className="hidden" 
-              id="file-upload"
-              onChange={handleImageUpload} 
-            />
+  type="file" 
+  accept="image/*"
+  onChange={async (e) => {
+    const url = await handleImageUpload(e); // Ab naam match kare ga
+    if(url) setPImg(url);
+  }} 
+/>
             <label 
               htmlFor="file-upload" 
               className={`w-full p-5 bg-white/10 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center cursor-pointer hover:border-primary transition-all ${uploading ? 'animate-pulse opacity-50' : ''}`}

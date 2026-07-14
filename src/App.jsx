@@ -7,7 +7,8 @@ import TrackOrder from './pages/TrackOrder';
 import ProductDetails from './pages/ProductDetails';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
-
+import Wishlist from './pages/Wishlist';
+import Profile from './pages/Profile';
 function App() {
   return (
     <Routes>
@@ -18,6 +19,8 @@ function App() {
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/product/:id" element={<ProductDetails />} />
+      <Route path="/wishlist" element={<Wishlist />} />
+      <Route path="/profile" element={<Profile />} />
     </Routes>
   );
 }

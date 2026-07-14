@@ -33,7 +33,11 @@ export default function Footer() {
             </li>
           </ul>
         </div>
-
+         <div className="flex gap-4">
+  {settings.facebook && <a href={settings.facebook} target="_blank" className="hover:text-primary transition-colors">FB</a>}
+  {settings.instagram && <a href={settings.instagram} target="_blank" className="hover:text-primary transition-colors">IG</a>}
+  {settings.youtube && <a href={settings.youtube} target="_blank" className="hover:text-primary transition-colors">YT</a>}
+</div>
         {/* Payment & Security */}
         <div className="space-y-4">
           <h3 className="font-black uppercase italic text-xs tracking-[0.3em] text-slate-500">Secure Payments</h3>

@@ -8,7 +8,8 @@ import { Link } from 'react-router-dom';
 import Footer from '../components/Footer'; 
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
-  // Ye line missing thi
+import { WishlistContext } from '../context/WishlistContext';
+
 export default function Home() {
   const { settings } = useContext(AppContext);
   const [products, setProducts] = useState([]);
@@ -19,7 +20,14 @@ export default function Home() {
   const [custName, setCustName] = useState("");
   const [custAddress, setCustAddress] = useState("");
   const [transId, setTransId] = useState("");
- const { addToCart } = useContext(CartContext);
+
+  // Pehle saare Contexts sahi se nikaalein (Fixed Wishlist error here)
+  const { user, logout } = useContext(AuthContext); 
+  const { addToCart, totalItems } = useContext(CartContext);
+  const { wishlist, toggleWishlist, isInWishlist } = useContext(WishlistContext); // 'wishlist' nikaal liya ab crash nahi hoga
+  
+  const themeColor = settings.primaryColor || "#ff0000";
+
   useEffect(() => {
     const unsubProducts = onSnapshot(collection(db, "products"), (s) => {
       setProducts(s.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -30,106 +38,139 @@ export default function Home() {
     return () => { unsubProducts(); unsubCats(); };
   }, []);
 
+  useEffect(() => {
+    if (settings.storeName) {
+      document.title = `${settings.storeName} | Next Gen Shopping`;
+    }
+  }, [settings.storeName]);
+
   const filteredProducts = products.filter(p => 
     (activeCat === "All" || p.category === activeCat) &&
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pehle AuthContext se user nikaalein (Top par)
-const { user, logout } = useContext(AuthContext); 
-const { totalItems } = useContext(CartContext);
-const sendWhatsAppOrder = async () => {
-    if (!custName || !custAddress || !transId) return alert("Fill details!");
-    
-    try {
-        const productRef = doc(db, "products", selectedProduct.id);
-        const newStock = Number(selectedProduct.stock) - 1;
-        await updateDoc(productRef, { stock: newStock });
+  const sendWhatsAppOrder = async () => {
+      if (!custName || !custAddress || !transId) return alert("Fill details!");
+      try {
+          const productRef = doc(db, "products", selectedProduct.id);
+          const newStock = Number(selectedProduct.stock) - 1;
+          await updateDoc(productRef, { stock: newStock });
 
-        // Save Order with User Link
-        await addDoc(collection(db, "orders"), {
-          customerName: custName, 
-          address: custAddress,
-          productName: selectedProduct.name, 
-          price: selectedProduct.price,
-          transactionId: transId, 
-          status: "Pending", 
-          createdAt: new Date(),
-          userId: user ? user.uid : "guest" // <--- Ye line user ko order se link kare gi
-        });
-
-        // WhatsApp redirect logic...
-    } catch (e) { alert(e.message); }
-};
+          await addDoc(collection(db, "orders"), {
+            customerName: custName, 
+            address: custAddress,
+            productName: selectedProduct.name, 
+            price: selectedProduct.price,
+            transactionId: transId, 
+            status: "Pending", 
+            createdAt: new Date(),
+            userId: user ? user.uid : "guest"
+          });
+      } catch (e) { alert(e.message); }
+  };
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navbar */}
-      <nav className="p-4 md:p-6 bg-primary text-white flex justify-between items-center shadow-xl sticky top-0 z-50">
-  {/* Logo / Store Name */}
-  <h1>
-  {/* Logo / Store Name Fix */}
-<Link to="/" className="flex items-center gap-3">
-  {settings.logoUrl ? (
-    <img src={settings.logoUrl} alt="Logo" className="h-8 md:h-12 w-auto object-contain" />
-  ) : (
-    <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter truncate max-w-[150px] md:max-w-none">
-      {settings.storeName || "Omni Store"}
-    </h1>
-  )}
-</Link>
-  </h1>
-  
+      {/* Navbar - Dynamic Color and Logic Fix */}
+      <nav style={{ backgroundColor: themeColor }} className="p-4 md:p-6 text-white flex justify-between items-center shadow-xl sticky top-0 z-50 transition-colors">
+        
+        {/* Logo / Store Name Area (100% Dynamic) */}
+        <Link to="/" className="flex items-center gap-3 group">
+          {settings.logoUrl && (
+            <div className="bg-white p-1 rounded-full shadow-xl border border-white/20 group-hover:scale-110 transition-transform">
+              <img 
+                src={settings.logoUrl} 
+                alt={settings.storeName} 
+                className="h-10 w-10 md:h-12 md:w-12 object-contain rounded-full" 
+              />
+            </div>
+          )}
+          <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter">
+            {settings.storeName}
+          </h1>
+        </Link>
+          
+        {/* Navigation Links */}
+        <div className="flex items-center gap-2">
+          <Link to="/track" className="hidden sm:block bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition">
+            Track
+          </Link>
 
-  {/* Navigation Links */}
-  <div className="flex items-center gap-2">
-    <Link to="/track" className="hidden sm:block bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition">
-      Track
-    </Link>
-     <Link to="/cart" className="relative p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
-  <span className="text-xl">🛒</span>
-  {totalItems > 0 && (
-    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
-      {totalItems}
-    </span>
-  )}
-</Link>
-    {user ? (
-      <div className="flex items-center gap-2 bg-black/10 p-1 pl-4 rounded-full border border-white/10">
-        <span className="text-[9px] font-black uppercase opacity-60 hidden md:block">
-          Hi, {user?.name || 'User'}
-        </span>
-        <button 
-          onClick={() => { if(window.confirm("Logout?")) logout(); }} 
-          className="bg-white text-primary px-4 py-2 rounded-full text-[10px] font-black uppercase shadow-lg active:scale-95 transition"
-        >
-          Logout
-        </button>
-      </div>
-    ) : (
-      <Link to="/auth" className="bg-white text-primary px-6 py-2 rounded-full font-black text-[10px] uppercase shadow-lg hover:scale-105 transition">
-        Login
-      </Link>
-    )}
-      
-    <Link to="/admin" className="bg-slate-900 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase border border-white/20">
-      Admin
-    </Link>
-  </div>        
-</nav>
+          {/* Wishlist Link (Fixed Variable Error) */}
+          <Link to="/wishlist" className="relative p-2 bg-white/10 rounded-full hover:bg-white/20 transition group">
+            <span className="text-xl">
+              {wishlist?.length > 0 ? "❤️" : "🤍"}
+            </span>
+            {wishlist?.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-lg border border-primary/20">
+                {wishlist.length}
+              </span>
+            )}
+          </Link>
+
+          {/* Cart Link */}
+          <Link to="/cart" className="relative p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
+            <span className="text-xl">🛒</span>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+                {totalItems}
+              </span>
+            )}
+          </Link>
+           <Link to="/profile" className="text-[9px] font-black uppercase opacity-60 hidden md:block hover:text-white transition-colors">
+             Hi, {user?.name || 'My Profile'}
+           </Link>
+          {/* User / Auth Section */}
+          {user ? (
+            <div className="flex items-center gap-2 bg-black/10 p-1 pl-4 rounded-full border border-white/10">
+              <span className="text-[9px] font-black uppercase opacity-60 hidden md:block">
+                Hi, {user?.name || 'User'}
+              </span>
+              <button 
+                onClick={() => { if(window.confirm("Logout?")) logout(); }} 
+                className="bg-white text-primary px-4 py-2 rounded-full text-[10px] font-black uppercase shadow-lg active:scale-95 transition"
+                style={{ color: themeColor }}
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link to="/auth" className="bg-white px-6 py-2 rounded-full font-black text-[10px] uppercase shadow-lg hover:scale-105 transition" style={{ color: themeColor }}>
+              Login
+            </Link>
+          )}
+            
+          <Link to="/admin" className="bg-slate-900 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase border border-white/20">
+            Admin
+          </Link>
+        </div>        
+      </nav>
 
       {/* Hero Section */}
-      <div className="flex flex-col md:flex-row items-center max-w-7xl mx-auto p-6 md:p-10 gap-10 min-h-[60vh]">
-        <div className="flex-1 text-center md:text-left order-2 md:order-1">
-          <motion.h2 initial={{x:-50, opacity:0}} animate={{x:0, opacity:1}} className="text-5xl md:text-8xl font-black uppercase leading-[0.9] tracking-tighter">
-            Next Gen <br /> <span className="text-primary italic">Shopping</span>
-          </motion.h2>
-          <p className="mt-5 text-slate-400 font-medium tracking-widest uppercase text-xs md:text-sm">Premium 3D Experience</p>
-        </div>
-        <div className="flex-1 w-full h-[350px] md:h-[500px] order-1 md:order-2">
-          <Hero3D color={settings.primaryColor} />
-        </div>
-      </div>
+      {/* Hero Section - Now 100% Dynamic */}
+<div className="flex flex-col md:flex-row items-center max-w-7xl mx-auto p-6 md:p-10 gap-10 min-h-[60vh]">
+  <div className="flex-1 text-center md:text-left order-2 md:order-1">
+    <motion.h2 
+      initial={{x:-50, opacity:0}} 
+      animate={{x:0, opacity:1}} 
+      className="text-5xl md:text-8xl font-black uppercase leading-[0.9] tracking-tighter"
+    >
+      {/* Admin Panel se aane wali heading yahan split hogi */}
+      {settings.heroHeading?.split(' ').slice(0, -1).join(' ')} <br /> 
+      <span style={{ color: themeColor }} className="italic">
+        {settings.heroHeading?.split(' ').slice(-1)}
+      </span>
+    </motion.h2>
+    
+    <p className="mt-5 text-slate-400 font-medium tracking-widest uppercase text-xs md:text-sm">
+      {settings.heroSubheading || "Premium 3D Experience"}
+    </p>
+  </div>
+  
+  <div className="flex-1 w-full h-[350px] md:h-[500px] order-1 md:order-2">
+    <Hero3D color={themeColor} />
+  </div>
+</div>
 
       {/* Search & Categories */}
       <div className="max-w-7xl mx-auto px-6 md:px-10 mb-10 space-y-6">
@@ -165,6 +206,14 @@ const sendWhatsAppOrder = async () => {
                  
                  <div className="flex justify-between items-center mt-6 px-1">
                     <span className="text-primary font-black text-2xl font-mono">Rs.{p.price}</span>
+                    <button 
+  onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p); }}
+  className="absolute top-4 left-4 z-20 p-3 rounded-full bg-white/80 backdrop-blur shadow-lg active:scale-90 transition-all"
+>
+  <span className={isInWishlist(p.id) ? "text-red-500" : "text-slate-300"}>
+    {isInWishlist(p.id) ? "❤️" : "🤍"}
+  </span>
+</button>
                     <button 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedProduct(p); }} 
                       disabled={p.stock <= 0}

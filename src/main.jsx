@@ -7,14 +7,17 @@ import { AuthProvider } from './context/AuthContext'
 import './styles/index.css'
 import App from './App.jsx'
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
       <AppProvider>
-        <CartProvider> {/* <--- Ye add kiya */}
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+        <CartProvider> 
+          <WishlistProvider> 
+             <BrowserRouter>
+                <App />
+             </BrowserRouter>
+           </WishlistProvider>
         </CartProvider>
       </AppProvider>
     </AuthProvider>
