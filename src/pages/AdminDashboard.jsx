@@ -72,8 +72,10 @@ export default function AdminDashboard() {
     setUploading(true);
     const formData = new FormData(); formData.append("image", file);
     try {
-      const res = await fetch(`https://api.imgbb.com/1/upload?key=5ef060cc49c578628a4f76bfebc26739`, { method: "POST", body: formData });
-      const data = await res.json();
+const res = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_KEY}`, {
+  method: "POST",
+  body: formData
+});      const data = await res.json();
       if (data.success) return data.data.url;
     } catch { alert("Upload failed!"); }
     finally { setUploading(false); }
